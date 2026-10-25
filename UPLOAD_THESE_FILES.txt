@@ -1,0 +1,13 @@
+Upload ALL files in this folder to the ROOT of your GitHub repository.
+Do not place them inside src/ or any other folder.
+
+Files:
+- index.html (replace existing)
+- styles.css (replace existing)
+- sw.js (replace existing)
+- app-v032.js (new)
+- recipes-v032.js (new)
+- week-v032.js (new)
+- views-v032.js (new)
+
+The old nested src/app.js, src/ui/views.js, src/domain/recipes.js and src/domain/week.js can stay. V0.3.2 no longer loads them.

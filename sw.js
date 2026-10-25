@@ -1,9 +1,9 @@
-const CACHE = 'family-cookbook-v3.1'
+const CACHE = 'family-cookbook-v3.2'
 const SHELL = [
-  './','./index.html','./styles.css','./config.js','./manifest.webmanifest',
-  './src/app.js','./src/domain/recipes.js','./src/domain/week.js','./src/domain/image.js',
-  './src/data/indexedDbRepository.js','./src/data/firebaseRepository.js','./src/data/backup.js',
-  './src/ui/icons.js','./src/ui/views.js','./assets/icon-192.png','./assets/icon-512.png'
+  './','./index.html','./styles.css?v=032','./config.js','./manifest.webmanifest',
+  './app-v032.js','./recipes-v032.js','./week-v032.js','./views-v032.js',
+  './src/domain/image.js','./src/data/indexedDbRepository.js','./src/data/firebaseRepository.js','./src/data/backup.js',
+  './src/ui/icons.js','./assets/icon-192.png','./assets/icon-512.png'
 ]
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())))
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())))
