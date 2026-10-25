@@ -1,17 +1,9 @@
-const emptyPlanner = () => ({
-  monday: null,
-  tuesday: null,
-  wednesday: null,
-  thursday: null,
-  friday: null,
-  saturday: null,
-  sunday: null,
-})
+import { normalizePlanner, removeMealFromPlanner } from '../domain/week.js'
 
 export class MemoryRepository {
   constructor(seed = {}) {
     this.recipes = new Map((seed.recipes ?? []).map(recipe => [recipe.id, structuredClone(recipe)]))
-    this.planners = new Map(Object.entries(seed.planners ?? {}).map(([key, value]) => [key, structuredClone(value)]))
+    this.planners = new Map(Object.entries(seed.planners ?? {}).map(([key, value]) => [key, structuredClone(normalizePlanner(value))]))
     this.settings = { householdName: 'Our Kitchen', ...(seed.settings ?? {}) }
   }
 
@@ -32,16 +24,12 @@ export class MemoryRepository {
   async deleteRecipe(id) {
     this.recipes.delete(id)
     for (const [key, planner] of this.planners.entries()) {
-      const next = { ...planner }
-      for (const day of Object.keys(next)) {
-        if (next[day] === id) next[day] = null
-      }
-      this.planners.set(key, next)
+      this.planners.set(key, removeMealFromPlanner(planner, id))
     }
   }
 
   async getPlanner(weekKey) {
-    return structuredClone(this.planners.get(weekKey) ?? emptyPlanner())
+    return structuredClone(normalizePlanner(this.planners.get(weekKey)))
   }
 
   async listPlanners() {
@@ -49,7 +37,7 @@ export class MemoryRepository {
   }
 
   async savePlanner(weekKey, planner) {
-    const merged = { ...emptyPlanner(), ...planner }
+    const merged = normalizePlanner(planner)
     this.planners.set(weekKey, structuredClone(merged))
     return structuredClone(merged)
   }
@@ -65,7 +53,7 @@ export class MemoryRepository {
 
   async replaceAll(data) {
     this.recipes = new Map((data.recipes ?? []).map(recipe => [recipe.id, structuredClone(recipe)]))
-    this.planners = new Map(Object.entries(data.planners ?? {}).map(([key, value]) => [key, structuredClone(value)]))
+    this.planners = new Map(Object.entries(data.planners ?? {}).map(([key, value]) => [key, structuredClone(normalizePlanner(value))]))
     this.settings = { householdName: 'Our Kitchen', ...(data.settings ?? {}) }
   }
 }

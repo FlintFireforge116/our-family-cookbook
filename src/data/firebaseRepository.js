@@ -1,3 +1,5 @@
+import { normalizePlanner, removeMealFromPlanner } from '../domain/week.js'
+
 export function hasFirebaseConfig(config) {
   return Boolean(config?.apiKey && config?.authDomain && config?.projectId && config?.appId)
 }
@@ -13,8 +15,6 @@ async function firebaseModules() {
   ])
   return { ...app, ...auth, ...firestore }
 }
-
-const emptyPlanner = () => ({ monday:null,tuesday:null,wednesday:null,thursday:null,friday:null,saturday:null,sunday:null })
 
 export async function createFirebaseContext(config) {
   if (!hasFirebaseConfig(config)) throw new Error('Firebase is not configured.')
@@ -70,24 +70,20 @@ class FirebaseRepository {
     await this.fb.deleteDoc(this.recipeDoc(id))
     const planners = await this.listPlanners()
     for (const [key, planner] of Object.entries(planners)) {
-      let changed = false
-      const next = { ...planner }
-      for (const day of Object.keys(next)) {
-        if (next[day] === id) { next[day] = null; changed = true }
-      }
-      if (changed) await this.savePlanner(key, next)
+      const next = removeMealFromPlanner(planner, id)
+      if (JSON.stringify(next) !== JSON.stringify(normalizePlanner(planner))) await this.savePlanner(key, next)
     }
   }
   async getPlanner(key) {
     const snap = await this.fb.getDoc(this.plannerDoc(key))
-    return snap.exists() ? { ...emptyPlanner(), ...snap.data() } : emptyPlanner()
+    return snap.exists() ? normalizePlanner(snap.data()) : normalizePlanner()
   }
   async listPlanners() {
     const snap = await this.fb.getDocs(this.fb.collection(this.db, 'users', this.uid, 'planners'))
-    return Object.fromEntries(snap.docs.map(d => [d.id, { ...emptyPlanner(), ...d.data() }]))
+    return Object.fromEntries(snap.docs.map(d => [d.id, normalizePlanner(d.data())]))
   }
   async savePlanner(key, planner) {
-    const value = { ...emptyPlanner(), ...planner }
+    const value = normalizePlanner(planner)
     await this.fb.setDoc(this.plannerDoc(key), value)
     return value
   }

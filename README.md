@@ -2,7 +2,7 @@
 
 A private, installable family recipe PWA designed for iPhone first. It works locally with no accounts or paid services, and can optionally use Firebase Authentication + Firestore to sync the same cookbook between devices.
 
-## What V1 includes
+## What V0.2 includes
 
 - Warm cookbook-style home screen with **Recipes**, **Add Recipe**, **Categories & Tags**, **What Should We Cook?**, and **My Week**.
 - User-created multi-tags such as `Pasta`, `Batch cook`, `Beef`, etc.
@@ -57,12 +57,10 @@ Before switching `config.js` to Firebase, export a backup from **Settings**. Aft
 
 ## Deploy free with GitHub Pages
 
-The repository includes `.github/workflows/pages.yml`.
-
-1. Create a new GitHub repository and push this project to its `main` branch.
+1. Put the project files on the repository's `main` branch with `index.html` at the repository root.
 2. On GitHub open **Settings → Pages**.
-3. Under **Build and deployment**, choose **GitHub Actions**.
-4. The included workflow deploys the static PWA after each push to `main`.
+3. Under **Build and deployment**, choose **Deploy from a branch**.
+4. Select `main` and `/(root)`, then save.
 5. Open the generated Pages URL in Safari on the iPhone.
 6. Tap **Share → Add to Home Screen**, make sure **Open as Web App** is enabled, then add it.
 
@@ -71,3 +69,10 @@ The GitHub repository contains only app code/configuration. Recipes and photos a
 ## Security / public-release note
 
 The current single-login model is intentionally simple for a private household. Before making this public, replace it with separate user accounts + household membership/invites, move photos to proper object storage, add App Check/rate controls, and review the Firestore rules and privacy model.
+
+
+## V0.2 planner update
+- My Week now has a weekly meal pool plus weekday slots.
+- Add recipes to the current week from recipe cards, recipe detail, or the random picker.
+- Assign a meal with drag-and-drop on larger screens or the Day menu on touch devices.
+- The home title has been rebalanced so it stays inside its arch.

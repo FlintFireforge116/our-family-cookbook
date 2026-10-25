@@ -1,7 +1,7 @@
+import { normalizePlanner, removeMealFromPlanner } from '../domain/week.js'
+
 const DB_NAME = 'family-cookbook-v1'
 const VERSION = 1
-const emptyPlanner = () => ({ monday:null,tuesday:null,wednesday:null,thursday:null,friday:null,saturday:null,sunday:null })
-
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, VERSION)
@@ -67,12 +67,9 @@ export class IndexedDbRepository {
     tx.objectStore('recipes').delete(id)
     const store = tx.objectStore('planners')
     for (const item of planners) {
-      const next = { ...item }
-      let changed = false
-      for (const day of Object.keys(emptyPlanner())) {
-        if (next[day] === id) { next[day] = null; changed = true }
-      }
-      if (changed) store.put(next)
+      const { weekKey, ...planner } = item
+      const next = removeMealFromPlanner(planner, id)
+      if (JSON.stringify(next) !== JSON.stringify(normalizePlanner(planner))) store.put({ weekKey, ...next })
     }
     await transactionDone(tx)
     db.close()
@@ -83,9 +80,9 @@ export class IndexedDbRepository {
     const tx = db.transaction('planners', 'readonly')
     const value = await requestResult(tx.objectStore('planners').get(weekKey))
     db.close()
-    if (!value) return emptyPlanner()
+    if (!value) return normalizePlanner()
     const { weekKey: _, ...planner } = value
-    return { ...emptyPlanner(), ...planner }
+    return normalizePlanner(planner)
   }
 
   async listPlanners() {
@@ -93,11 +90,11 @@ export class IndexedDbRepository {
     const tx = db.transaction('planners', 'readonly')
     const values = await requestResult(tx.objectStore('planners').getAll())
     db.close()
-    return Object.fromEntries(values.map(({ weekKey, ...planner }) => [weekKey, { ...emptyPlanner(), ...planner }]))
+    return Object.fromEntries(values.map(({ weekKey, ...planner }) => [weekKey, normalizePlanner(planner)]))
   }
 
   async savePlanner(weekKey, planner) {
-    const value = { ...emptyPlanner(), ...planner }
+    const value = normalizePlanner(planner)
     const db = await this.db()
     const tx = db.transaction('planners', 'readwrite')
     tx.objectStore('planners').put({ weekKey, ...value })
@@ -133,7 +130,7 @@ export class IndexedDbRepository {
     const settings = tx.objectStore('settings')
     recipes.clear(); planners.clear(); settings.clear()
     for (const recipe of data.recipes) recipes.put(recipe)
-    for (const [weekKey, planner] of Object.entries(data.planners)) planners.put({ weekKey, ...planner })
+    for (const [weekKey, planner] of Object.entries(data.planners)) planners.put({ weekKey, ...normalizePlanner(planner) })
     settings.put({ id: 'main', ...data.settings })
     await transactionDone(tx)
     db.close()

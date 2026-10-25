@@ -3,8 +3,8 @@ import { createFirebaseContext, hasFirebaseConfig } from './data/firebaseReposit
 import { createBackup, importBackup } from './data/backup.js'
 import { allTags, filterRecipes, normalizeTags, sortRecipes } from './domain/recipes.js'
 import { compressImage } from './domain/image.js'
-import { formatDayDate, shiftWeek, weekDates, weekKeyForDate } from './domain/week.js'
-import { esc, homeView, pageTop, recipeDetailView, recipeFormView, recipeListView, formatMinutes } from './ui/views.js'
+import { addMealToPlanner, assignMealToDay, clearPlannerDay, removeMealFromPlanner, shiftWeek, weekDates, weekKeyForDate, WEEK_DAYS } from './domain/week.js'
+import { esc, homeView, pageTop, recipeDetailView, recipeFormView, recipeListView, weekPlannerView, formatMinutes } from './ui/views.js'
 import { icons } from './ui/icons.js'
 
 const app = document.querySelector('#app')
@@ -64,6 +64,29 @@ function tagsList() {
   return allTags(state.recipes).map(item => item.name)
 }
 
+async function addRecipeToCurrentWeek(recipeId) {
+  const key = weekKeyForDate(new Date())
+  const planner = await repository.getPlanner(key)
+  const alreadyThere = planner.meals?.includes(recipeId)
+  if (!alreadyThere) await repository.savePlanner(key, addMealToPlanner(planner, recipeId))
+  toast(alreadyThere ? 'Already in My Week' : 'Added to My Week')
+}
+
+function bindAddToWeekControls() {
+  bindAll('[data-add-week]', 'click', async event => {
+    event.preventDefault()
+    event.stopPropagation()
+    const recipeId = event.currentTarget.dataset.addWeek
+    if (recipeId) await addRecipeToCurrentWeek(recipeId)
+  })
+}
+
+async function saveWeekPlanner(key, planner, message = 'Week updated') {
+  await repository.savePlanner(key, planner)
+  toast(message)
+  await render()
+}
+
 function tagsView() {
   const tags = allTags(state.recipes)
   return `${pageTop('Categories & Tags','The labels that make sense in your kitchen')}
@@ -84,25 +107,8 @@ function randomView() {
       ${recipe ? `<article class="random-card">
         <div class="random-photo">${recipe.imageData ? `<img src="${esc(recipe.imageData)}" alt="">` : `<div>${icons.recipes}</div>`}</div>
         <div class="random-copy"><span class="eyebrow">Tonight’s suggestion</span><h2>${esc(recipe.title)}</h2>${recipe.description?`<p>${esc(recipe.description)}</p>`:''}<span class="time-badge">${icons.clock}${formatMinutes(recipe.cookMinutes)}</span></div>
-        <div class="random-actions"><a class="button primary" href="#/recipe/${encodeURIComponent(recipe.id)}">View recipe</a><button id="pick-again" class="button secondary" type="button">Pick another</button></div>
+        <div class="random-actions"><a class="button primary" href="#/recipe/${encodeURIComponent(recipe.id)}">View recipe</a><button class="button week-button" type="button" data-add-week="${esc(recipe.id)}">${icons.week}<span>My Week</span></button><button id="pick-again" class="button secondary" type="button">Pick another</button></div>
       </article>` : `<section class="empty-state">${icons.random}<h2>Nothing to pick from yet</h2><p>${state.recipes.length ? 'No recipes match those tags. Try removing one.' : 'Add a few dishes and this button becomes your indecisive-evening hero.'}</p>${state.recipes.length?'':`<a class="button" href="#/recipe/new">Add a recipe</a>`}</section>`}
-    </main>`
-}
-
-async function weekView() {
-  const key = weekKeyForDate(state.weekDate)
-  const dates = weekDates(state.weekDate)
-  const planner = await repository.getPlanner(key)
-  const options = day => `<option value="">Nothing planned</option>${sortRecipes(state.recipes,'name').map(recipe => `<option value="${esc(recipe.id)}" ${planner[day]===recipe.id?'selected':''}>${esc(recipe.title)}</option>`).join('')}`
-  const start = dates[0].date
-  const end = dates[6].date
-  const heading = `${formatDayDate(start)} – ${formatDayDate(end)}`
-  return `${pageTop('My Week','A simple meal plan, not another job to manage')}
-    <main class="page narrow week-page">
-      <div class="week-nav"><button id="prev-week" class="icon-button" type="button">‹</button><div><strong>${esc(heading)}</strong><small>${esc(key)}</small></div><button id="next-week" class="icon-button" type="button">›</button></div>
-      <button id="this-week" class="text-button" type="button">Jump to this week</button>
-      <div class="week-list">${dates.map(({day,date}) => `<label class="day-card"><span class="day-name">${day.charAt(0).toUpperCase()+day.slice(1)}<small>${formatDayDate(date)}</small></span><select data-plan-day="${day}">${options(day)}</select></label>`).join('')}</div>
-      ${state.recipes.length ? '' : `<p class="helper-note">Add some recipes first, then they’ll appear in each day’s menu.</p>`}
     </main>`
 }
 
@@ -121,7 +127,7 @@ function settingsView() {
         <h2>Backup</h2><p>Export everything — recipes, photos, tags, notes and your weekly plans — as one file.</p>
         <div class="button-row"><button id="export-backup" class="button secondary" type="button">Export backup</button><label class="button secondary file-button">Import backup<input id="import-backup" type="file" accept="application/json,.json"></label></div>
       </section>
-      <section class="settings-card subtle"><h2>About this version</h2><p>Private family V1 · installable PWA · no paid services required.</p></section>
+      <section class="settings-card subtle"><h2>About this version</h2><p>Private family V0.2 · installable PWA · no paid services required.</p></section>
     </main>`
 }
 
@@ -151,6 +157,7 @@ async function render() {
       state.selectedTags = state.selectedTags.includes(tag) ? state.selectedTags.filter(value => value !== tag) : [...state.selectedTags, tag]
       render()
     })
+    bindAddToWeekControls()
     return
   }
 
@@ -181,20 +188,58 @@ async function render() {
       render()
     })
     bind('#pick-again','click', () => { state.randomId = null; render() })
+    bindAddToWeekControls()
     return
   }
 
   if (section === 'week') {
-    setPage(await weekView())
+    const key = weekKeyForDate(state.weekDate)
+    const dates = weekDates(state.weekDate)
+    const planner = await repository.getPlanner(key)
+    setPage(weekPlannerView({ key, dates, planner, recipes: state.recipes }))
     bind('#prev-week','click', () => { state.weekDate = shiftWeek(state.weekDate,-1); render() })
     bind('#next-week','click', () => { state.weekDate = shiftWeek(state.weekDate,1); render() })
     bind('#this-week','click', () => { state.weekDate = new Date(); render() })
-    bindAll('[data-plan-day]','change', async event => {
-      const key = weekKeyForDate(state.weekDate)
-      const planner = await repository.getPlanner(key)
-      planner[event.currentTarget.dataset.planDay] = event.currentTarget.value || null
-      await repository.savePlanner(key, planner)
-      toast('Week updated')
+    bind('#week-add-form','submit', async event => {
+      event.preventDefault()
+      const recipeId = document.querySelector('#week-add-recipe')?.value
+      if (!recipeId) return
+      await saveWeekPlanner(key, addMealToPlanner(planner, recipeId), 'Meal added to this week')
+    })
+    bindAll('[data-remove-week]','click', async event => {
+      await saveWeekPlanner(key, removeMealFromPlanner(planner, event.currentTarget.dataset.removeWeek), 'Meal removed from this week')
+    })
+    bindAll('[data-assign-meal]','change', async event => {
+      const recipeId = event.currentTarget.dataset.assignMeal
+      const day = event.currentTarget.value
+      let next = planner
+      if (day) next = assignMealToDay(next, recipeId, day)
+      else {
+        for (const existingDay of WEEK_DAYS) if (next[existingDay] === recipeId) next = clearPlannerDay(next, existingDay)
+      }
+      await saveWeekPlanner(key, next, day ? 'Meal placed on the week' : 'Meal left unassigned')
+    })
+    bindAll('[data-clear-day]','click', async event => {
+      await saveWeekPlanner(key, clearPlannerDay(planner, event.currentTarget.dataset.clearDay), 'Day cleared')
+    })
+    bindAll('[data-week-meal]','dragstart', event => {
+      event.dataTransfer?.setData('text/plain', event.currentTarget.dataset.weekMeal)
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+      event.currentTarget.classList.add('dragging')
+    })
+    bindAll('[data-week-meal]','dragend', event => event.currentTarget.classList.remove('dragging'))
+    bindAll('[data-day-drop]','dragover', event => {
+      event.preventDefault()
+      event.currentTarget.classList.add('drag-over')
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+    })
+    bindAll('[data-day-drop]','dragleave', event => event.currentTarget.classList.remove('drag-over'))
+    bindAll('[data-day-drop]','drop', async event => {
+      event.preventDefault()
+      event.currentTarget.classList.remove('drag-over')
+      const recipeId = event.dataTransfer?.getData('text/plain')
+      const day = event.currentTarget.dataset.dayDrop
+      if (recipeId && day) await saveWeekPlanner(key, assignMealToDay(planner, recipeId, day), 'Meal placed on the week')
     })
     return
   }
@@ -273,6 +318,7 @@ function renderRecipeDetail(recipe) {
     await refresh()
     toast('Marked as cooked today')
   })
+  bindAddToWeekControls()
   bind('#delete-recipe','click', async () => {
     if (!confirm(`Delete “${recipe.title}”? This can’t be undone unless you have a backup.`)) return
     await repository.deleteRecipe(recipe.id)

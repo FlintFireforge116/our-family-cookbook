@@ -1,4 +1,67 @@
-const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+export const WEEK_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+
+export function emptyPlanner() {
+  return {
+    meals: [],
+    monday: null,
+    tuesday: null,
+    wednesday: null,
+    thursday: null,
+    friday: null,
+    saturday: null,
+    sunday: null,
+  }
+}
+
+export function normalizePlanner(planner = {}) {
+  const normalized = emptyPlanner()
+  const meals = Array.isArray(planner.meals) ? planner.meals.filter(value => typeof value === 'string' && value) : []
+  const assigned = []
+  for (const day of WEEK_DAYS) {
+    const value = typeof planner?.[day] === 'string' && planner[day] ? planner[day] : null
+    normalized[day] = value
+    if (value) assigned.push(value)
+  }
+  normalized.meals = [...new Set([...meals, ...assigned])]
+  return normalized
+}
+
+export function addMealToPlanner(planner, recipeId) {
+  const next = normalizePlanner(planner)
+  if (!recipeId) return next
+  if (!next.meals.includes(recipeId)) next.meals.push(recipeId)
+  return next
+}
+
+export function assignMealToDay(planner, recipeId, day) {
+  if (!WEEK_DAYS.includes(day)) return normalizePlanner(planner)
+  const next = addMealToPlanner(planner, recipeId)
+  for (const existingDay of WEEK_DAYS) {
+    if (next[existingDay] === recipeId) next[existingDay] = null
+  }
+  next[day] = recipeId || null
+  return next
+}
+
+export function clearPlannerDay(planner, day) {
+  const next = normalizePlanner(planner)
+  if (WEEK_DAYS.includes(day)) next[day] = null
+  return next
+}
+
+export function removeMealFromPlanner(planner, recipeId) {
+  const next = normalizePlanner(planner)
+  next.meals = next.meals.filter(id => id !== recipeId)
+  for (const day of WEEK_DAYS) {
+    if (next[day] === recipeId) next[day] = null
+  }
+  return next
+}
+
+export function plannerDayForRecipe(planner, recipeId) {
+  const normalized = normalizePlanner(planner)
+  return WEEK_DAYS.find(day => normalized[day] === recipeId) ?? null
+}
 
 function mondayOf(date) {
   const d = new Date(date)
@@ -10,7 +73,7 @@ function mondayOf(date) {
 
 export function weekDates(date = new Date()) {
   const monday = mondayOf(date)
-  return DAYS.map((day, index) => {
+  return WEEK_DAYS.map((day, index) => {
     const value = new Date(monday)
     value.setDate(monday.getDate() + index)
     return { day, date: value }

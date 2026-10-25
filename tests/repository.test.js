@@ -28,20 +28,23 @@ test('repository creates, updates and lists recipes', async () => {
 test('deleting a recipe clears planner references', async () => {
   const repo = new MemoryRepository()
   await repo.saveRecipe(recipe())
-  await repo.savePlanner('2026-W43', { monday: 'r1', tuesday: null, wednesday: null, thursday: null, friday: null, saturday: null, sunday: null })
+  await repo.savePlanner('2026-W43', { meals: ['r1'], monday: 'r1', tuesday: null, wednesday: null, thursday: null, friday: null, saturday: null, sunday: null })
   await repo.deleteRecipe('r1')
-  assert.equal((await repo.getPlanner('2026-W43')).monday, null)
+  const planner = await repo.getPlanner('2026-W43')
+  assert.equal(planner.monday, null)
+  assert.deepEqual(planner.meals, [])
 })
 
 test('backup round-trips recipes, planners and settings', async () => {
   const repo = new MemoryRepository()
   await repo.saveRecipe(recipe())
-  await repo.savePlanner('2026-W43', { monday: 'r1', tuesday: null, wednesday: null, thursday: null, friday: null, saturday: null, sunday: null })
+  await repo.savePlanner('2026-W43', { meals: ['r1'], monday: 'r1', tuesday: null, wednesday: null, thursday: null, friday: null, saturday: null, sunday: null })
   await repo.saveSettings({ householdName: 'Our Kitchen' })
   const text = await createBackup(repo)
   const parsed = parseBackup(text)
   assert.equal(parsed.recipes[0].title, 'Beef ragu')
   assert.equal(parsed.planners['2026-W43'].monday, 'r1')
+  assert.deepEqual(parsed.planners['2026-W43'].meals, ['r1'])
   assert.equal(parsed.settings.householdName, 'Our Kitchen')
 })
 
