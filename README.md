@@ -2,7 +2,7 @@
 
 A private, installable family recipe PWA designed for iPhone first. It works locally with no accounts or paid services, and can optionally use Firebase Authentication + Firestore to sync the same cookbook between devices.
 
-## What V0.2 includes
+## What V0.3 includes
 
 - Warm cookbook-style home screen with **Recipes**, **Add Recipe**, **Categories & Tags**, **What Should We Cook?**, and **My Week**.
 - User-created multi-tags such as `Pasta`, `Batch cook`, `Beef`, etc.
@@ -76,3 +76,15 @@ The current single-login model is intentionally simple for a private household. 
 - Add recipes to the current week from recipe cards, recipe detail, or the random picker.
 - Assign a meal with drag-and-drop on larger screens or the Day menu on touch devices.
 - The home title has been rebalanced so it stays inside its arch.
+
+
+## V0.3 usability update
+
+- Added Back + Home navigation controls and corrected icon centring.
+- Added a full month calendar to My Week; tap any date to open that week.
+- Batch meals can be assigned to multiple days.
+- Dragging from the meal pool adds a meal to a day; dragging an assigned day card moves that serving to another day.
+- Touch dragging uses a full-card drag ghost and preserves the current scroll position.
+- Recipe duration now uses Hours and Minutes selectors.
+- Recipe Sort styling now matches the filter/search controls.
+- Categories & Tags now has tag search and usage filtering.

@@ -1,4 +1,4 @@
-const CACHE = 'family-cookbook-v2'
+const CACHE = 'family-cookbook-v3'
 const SHELL = [
   './','./index.html','./styles.css','./config.js','./manifest.webmanifest',
   './src/app.js','./src/domain/recipes.js','./src/domain/week.js','./src/domain/image.js',
